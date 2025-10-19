@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AK‑View Browser (Demo)</title>
+    <style>
+         :root {
+            --gap: 10px;
+            --toolbar-h: 42px;
+            --bg: #0f1724;
+            --card: #0b1220;
+            --muted: #98a0b3;
+            --accent: #4f46e5;
+        }
+        
+        * {
+            box-sizing: border-box
+        }
+        
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial
+        }
+        
+        body {
+            background: linear-gradient(180deg, #071025 0%, #051126 100%);
+            color: #e6eef8
+        }
+        
+        header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            height: var(--toolbar-h);
+            padding: 8px 12px
+        }
+        
+        .brand {
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: 0.2px
+        }
+        
+        .controls {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+        
+        .btn {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 8px 10px;
+            border-radius: 8px;
+            color: var(--muted);
+            cursor: pointer
+        }
+        
+        .btn:hover {
+            color: #fff
+        }
+        
+        .layout-btn {
+            min-width: 34px;
+            text-align: center
+        }
+        
+        main {
+            height: calc(100% - var(--toolbar-h));
+            padding: 12px
+        }
+        /* grid container for views */
+        
+        .views {
+            display: grid;
+            gap: var(--gap);
+            height: 100%;
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr
+        }
+        /* view card */
+        
+        .view {
+            background: var(--card);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255, 255, 255, 0.03)
+        }
+        
+        .view .bar {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            gap: 8px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent)
+        }
+        
+        .address {
+            flex: 1;
+            display: flex;
+            gap: 8px
+        }
+        
+        .address input {
+            flex: 1;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            color: #fff
+        }
+        
+        .view .mini {
+            display: flex;
+            gap: 6px
+        }
+        
+        .mini button {
+            padding: 6px;
+            border-radius: 6px
+        }
+        
+        iframe {
+            border: 0;
+            height: 100%;
+            width: 100%;
+            background: white;
+            flex: 1
+        }
+        /* empty placeholder */
+        
+        .placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            font-size: 14px
+        }
+        /* responsive */
+        
+        @media (min-width:900px) {
+            .views.cols-2 {
+                grid-template-columns: 1fr 1fr
+            }
+            .views.cols-3 {
+                grid-template-columns: 1fr 1fr 1fr
+            }
+            .views.cols-4 {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: 1fr 1fr
+            }
+        }
+        /* small helpers */
+        
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px
+        }
+        
+        .logo .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 4px 18px rgba(79, 70, 229, 0.25)
+        }
+        
+        .tiny {
+            font-size: 12px;
+            color: var(--muted)
+        }
+        
+        footer {
+            position: fixed;
+            left: 12px;
+            bottom: 12px;
+            background: rgba(3, 7, 18, 0.6);
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 12px;
+            color: var(--muted)
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">
+            <span class="dot"></span>
+            <div>
+                <div class="brand">AK‑View Browser</div>
+                <div class="tiny">Demo — enter a URL and press ▶</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn layout-btn" data-layout="1">1</button>
+            <button class="btn layout-btn" data-layout="2">2</button>
+            <button class="btn layout-btn" data-layout="3">3</button>
+            <button class="btn layout-btn" data-layout="4">4</button>
+            <button class="btn" id="addView">+ Add</button>
+            <button class="btn" id="removeView">− Remove</button>
+            <button class="btn" id="reset">Reset</button>
+        </div>
+    </header>
+
+    <main>
+        <div id="views" class="views cols-1">
+            <!-- views will be injected here -->
+        </div>
+    </main>
+
+    <footer>Tip: For best results use sites that allow embedding. Some sites block being loaded inside iframes.</footer>
+
+    <script>
+        const viewsEl = document.getElementById('views');
+
+        // Utility to create a view card
+        function createView(initialUrl = 'about:blank') {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'view';
+
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+
+            const controls = document.createElement('div');
+            controls.className = 'mini';
+
+            const back = document.createElement('button');
+            back.className = 'btn tiny';
+            back.title = 'Back';
+            back.textContent = '◀';
+            const forward = document.createElement('button');
+            forward.className = 'btn tiny';
+            forward.title = 'Forward';
+            forward.textContent = '▶';
+            const reload = document.createElement('button');
+            reload.className = 'btn tiny';
+            reload.title = 'Reload';
+            reload.textContent = '↻';
+
+            controls.append(back, forward, reload);
+
+            const address = document.createElement('div');
+            address.className = 'address';
+            const input = document.createElement('input');
+            input.placeholder = 'https://example.com';
+            input.value = initialUrl === 'about:blank' ? '' : initialUrl;
+            const go = document.createElement('button');
+            go.className = 'btn';
+            go.textContent = '▶';
+
+            address.append(input, go);
+
+            const close = document.createElement('button');
+            close.className = 'btn';
+            close.textContent = '✕';
+            close.title = 'Close view';
+
+            bar.append(controls, address, close);
+
+            const frame = document.createElement('iframe');
+            frame.src = initialUrl === 'about:blank' ? 'about:blank' : sanitizeUrl(initialUrl);
+
+            // Attach events
+            go.addEventListener('click', () => {
+                const url = addHttpIfNeeded(input.value.trim());
+                frame.src = sanitizeUrl(url);
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    go.click();
+                }
+            });
+
+            reload.addEventListener('click', () => {
+                frame.contentWindow.location.reload();
+            });
+
+            // back/forward are best-effort: may not work due to cross-origin restrictions
+            back.addEventListener('click', () => {
+                try {
+                    frame.contentWindow.history.back();
+                } catch (e) {
+                    flash(btnFeedback(back, 'blocked'));
+                }
+            });
+            forward.addEventListener('click', () => {
+                try {
+                    frame.contentWindow.history.forward();
+                } catch (e) {
+                    flash(btnFeedback(forward, 'blocked'));
+                }
+            });
+
+            close.addEventListener('click', () => {
+                wrapper.remove();
+                adjustClassCount();
+            });
+
+            wrapper.append(bar, frame);
+            return wrapper;
+        }
+
+        function addHttpIfNeeded(url) {
+            if (!url) return 'about:blank';
+            if (url.startsWith('http://') || url.startsWith('https://')) return url;
+            return 'https://' + url;
+        }
+
+        function sanitizeUrl(url) {
+            // Very tiny sanitizer for demo purposes
+            if (url === 'about:blank') return 'about:blank';
+            try {
+                const u = new URL(addHttpIfNeeded(url));
+                return u.href;
+            } catch (e) {
+                return 'about:blank';
+            }
+        }
+
+        function btnFeedback(btn, text) {
+            const prev = btn.textContent;
+            btn.textContent = text;
+            setTimeout(() => btn.textContent = prev, 900);
+        }
+
+        function flash() { /* placeholder for visual feedback */ }
+
+        // Layout buttons
+        document.querySelectorAll('[data-layout]').forEach(b => {
+            b.addEventListener('click', () => {
+                const n = b.getAttribute('data-layout');
+                viewsEl.classList.remove('cols-1', 'cols-2', 'cols-3', 'cols-4');
+                viewsEl.classList.add('cols-' + n);
+                // If we need to ensure exactly n views, optionally add/remove
+                ensureViews(Number(n));
+            });
+        });
+
+        document.getElementById('addView').addEventListener('click', () => {
+            viewsEl.appendChild(createView('about:blank'));
+            adjustClassCount();
+        });
+        document.getElementById('removeView').addEventListener('click', () => {
+            if (viewsEl.lastElementChild) viewsEl.lastElementChild.remove();
+            adjustClassCount();
+        });
+        document.getElementById('reset').addEventListener('click', () => {
+            while (viewsEl.firstChild) viewsEl.removeChild(viewsEl.firstChild);
+            initDefaultViews();
+        });
+
+        function ensureViews(n) {
+            // ensure at least n views exist
+            while (viewsEl.children.length < n) {
+                viewsEl.appendChild(createView('about:blank'));
+            }
+            // don't auto-remove to avoid surprising the user
+        }
+
+        function adjustClassCount() {
+            const count = viewsEl.children.length;
+            // choose a reasonable grid class
+            viewsEl.classList.remove('cols-1', 'cols-2', 'cols-3', 'cols-4');
+            if (count <= 1) viewsEl.classList.add('cols-1');
+            else if (count === 2) viewsEl.classList.add('cols-2');
+            else if (count === 3) viewsEl.classList.add('cols-3');
+            else viewsEl.classList.add('cols-4');
+        }
+
+        function initDefaultViews() {
+            // create two starter views
+            viewsEl.appendChild(createView('https://example.com'));
+            viewsEl.appendChild(createView('https://example.org'));
+            adjustClassCount();
+        }
+
+        // initialize
+        initDefaultViews();
+
+        // helpful: drag-to-resize columns using CSS Grid isn't trivial cross-browser without an external library.
+        // For a demo, we provide layout buttons and add/remove controls.
+
+        // NOTES FOR USE (in-app):
+        // - Some sites (eg. google.com, github.com) block being embedded in an iframe (X-Frame-Options).
+        // - If a site refuses to load, try opening a site that allows embedding (example.com, example.org) or
+        //   host a simple HTML page yourself.
+    </script>
+</body>
+
+</html>
